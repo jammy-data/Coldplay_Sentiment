@@ -20,6 +20,7 @@ library(textdata)
 library(syuzhet)
 library(viridis)
 library(proxy)
+library(ggdendro)
 
 
 #Retrieve spotify and genius tokens for use with the API
@@ -118,7 +119,6 @@ album_order_levels <- c('Parachutes',
 tracks_tidy$album_name <- 
   factor(tracks_tidy$album_name,
          levels= album_order_levels)
-cbbPalette <- c("#F4BE2C", "#A0A0A0", "#086391", "#f5f5dc", "#FF00EE", "#79FAF6", "#F14528")
 
 ## Lyrical analysis
 
@@ -149,6 +149,7 @@ word_summary$album_name <-
 
 ### Term diversity and frequency
 
+#Figure 1.
 #Create a pirateplot
 pirateplot(formula =  word_count ~ album_name,
            data = word_summary, 
@@ -169,7 +170,7 @@ tracksTFIDF <-
   bind_tf_idf(word, album_name, n) %>% 
   arrange(desc(tf_idf))
 
-
+#Figure 2.
 #Facet plot for IDF for each word/album
 tracksTFIDF %>%
   group_by(album_name) %>%
@@ -221,8 +222,8 @@ for(i in tracks) {
     perc_sent[i,3] <- perc_list$perc[2]
 }
 
-
-#Sentiment contribution for each album Figure 3.
+#Figure 3.
+#Sentiment contribution for each album. 
 coldplay_bing %>%
   group_by(album_name) %>% 
   count(word, sentiment, sort = TRUE) %>%
@@ -280,8 +281,8 @@ radar_prep <- coldplay_nrc %>%
 #Change the order of the chart so negatives and positive sentiments are either side
 radar_prep <- radar_prep[c(2,7,5,8,4,3,1,6),]
 
-
-#Radar chart - interactive. Figure 4.
+#Figure 4.
+#Radar chart - interactive. 
 chartJSRadar(radar_prep,
              polyAlpha = 0.1,
              lineAlpha = 0.5,
@@ -327,6 +328,7 @@ track_attributes <- coldplay_tidy %>%
 
 
 #Figure 5
+#Observation of Audio features.
 track_attributes %>% 
   group_by(album_name) %>% 
   ggplot() +
@@ -357,26 +359,6 @@ lyrics_stats2 <- merge(coldplay_tidy,quant_sentiment, by.x = 'track_name', by.y 
   select(track_name,album_name,quant_n,valence)
 
 
-heatcol <- c("#3399ff","#ffff00")
-
-lyrics_stats2 %>% 
-  group_by(album_name) %>% 
-  mutate(sent_scale = scale(quant_n)) %>% 
-  mutate(valence_scale = scale(valence)) %>% 
-  pivot_longer(c(sent_scale, valence_scale)) %>% 
-  #  filter(album_name == 'Parachutes') %>% 
-  ggplot() +
-  aes(x=name, y=track_name) +
-  geom_tile(aes(fill=value)) +
-  scale_fill_viridis()+
-  #scale_fill_gradient(low = "#3399ff", high = "#ffff00", breaks=c(-2,2), labels = c("More negative", "Less Negative")) +
-  facet_wrap(~album_name, scales = 'free_y', ncol = 2)
-
-
-ggplot(data=lyrics_stats2) +
-  aes(x=quant_n,y=valence, color=album_name) +
-  geom_point(show.legend = FALSE)
-
 
 # Clustering
 
@@ -397,29 +379,8 @@ dend_data$labels <- left_join(dend_data$labels,
                               unique(coldplay_tidy[,c("album_name", "track_name")]),
                               by = c("label" = "track_name"))
 
-
-library(ggdendro)
-#Create a dataframe in a matrix format
-tracks_mat_prep <- tracks_tidy %>% 
-  group_by(word) %>% 
-  na.omit %>% 
-  mutate(howmany = n()) %>% 
-  select(track_title,word, howmany) %>% 
-  pivot_wider(names_from = word,values_from = howmany, values_fn = length, values_fill = 0)
-
-#Move the tracks_name column to the row.names
-tracks_mat <- tracks_mat_prep %>% 
-  select(-track_title)
-rownames(tracks_mat) <- tracks_mat_prep$track_title
-
-#Create a scaled dendrogram data object
-docsdissim <- dist(scale(tracks_mat)) #Similarity matrix
-h <- hclust(docsdissim, method = "ward.D") # Hierarchical Clustering
-dend <- as.dendrogram(h) #Dendrogram obj
-dend_data <- dendro_data(dend, type = "rectangle") #Dendogram data object
-
-
-
+#Figure 6.
+#Dendrogram.
 ggplot(dend_data$segments) +
   geom_text(data = dend_data$labels, aes(x, 0, label = label, color=album_name), 
             hjust = 1, size = 2) +
